@@ -1,0 +1,50 @@
+runtime:
+  mode: Simulation
+
+logging:
+  log_level: info
+  csv_fill_log_path: "reports/fills.csv"
+  report_path: "reports/performance_report.md"
+
+execution:
+  execution_window_secs: 60
+  decision_interval_ms: 250
+  max_child_order_qty: 1.0
+  min_child_order_qty: 0.1
+  order_ttl_ms: 2000
+  post_only_spread_bps: 4.0
+  cross_spread_aggression: 0.6
+  max_spread_bps_to_cross: 15.0
+
+simulation:
+  enabled: true
+  seed: 42
+  tick_interval_ms: 200
+  base_price: 30000.0
+  price_volatility: 0.0004
+  base_spread_bps: 6.0
+  depth_levels: 5
+  level_liquidity: 5.0
+  trade_rate_per_sec: 4.0
+  iceberg_probability: 0.2
+  large_order_multiplier: 4.0
+
+instruments:
+  - instrument:
+      symbol: "BTCUSDT"
+      instrument_type: Spot
+    side: Buy
+    target_qty: 3.0
+    decision_price_override: null
+  - instrument:
+      symbol: "BTCUSDT-PERP"
+      instrument_type: Perp
+    side: Buy
+    target_qty: 2.0
+    decision_price_override: null
+  - instrument:
+      symbol: "BTC-30JUN26-50000-C"
+      instrument_type: Option
+    side: Sell
+    target_qty: 1.5
+    decision_price_override: null
