@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 
 use crate::types::{BookLevel, BookSnapshot, InstrumentId, Side, Trade};
 

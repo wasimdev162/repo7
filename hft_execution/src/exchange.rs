@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use rand::prelude::*;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tokio::time;
@@ -42,7 +42,7 @@ pub enum ExchangeError {
     Unavailable,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExchangeHandle {
     request_tx: mpsc::Sender<ExchangeRequest>,
     market_tx: broadcast::Sender<MarketDataEvent>,
@@ -156,12 +156,15 @@ impl MockExchangeEngine {
 
     async fn run(mut self) {
         let mut interval = time::interval(Duration::from_millis(self.config.tick_interval_ms));
+        let config = self.config.clone();
+        let market_tx = self.market_tx.clone();
+        let fill_tx = self.fill_tx.clone();
         loop {
             tokio::select! {
                 _ = interval.tick() => {
                     for instrument in &self.instruments {
                         if let Some(state) = self.states.get_mut(instrument) {
-                            self.update_market_state(state).await;
+                            Self::update_market_state(&config, &market_tx, &fill_tx, state).await;
                         }
                     }
                 }
@@ -227,13 +230,18 @@ impl MockExchangeEngine {
         Err(ExchangeError::OrderNotFound)
     }
 
-    async fn update_market_state(&mut self, state: &mut SimInstrumentState) {
+    async fn update_market_state(
+        config: &SimulationConfig,
+        market_tx: &broadcast::Sender<MarketDataEvent>,
+        fill_tx: &mpsc::Sender<Fill>,
+        state: &mut SimInstrumentState,
+    ) {
         let now = Utc::now();
-        let mid = mid_price(&state.book).unwrap_or(self.config.base_price);
-        let drift = (state.rng.gen::<f64>() - 0.5) * self.config.price_volatility;
+        let mid = mid_price(&state.book).unwrap_or(config.base_price);
+        let drift = (state.rng.gen::<f64>() - 0.5) * config.price_volatility;
         let new_mid = (mid * (1.0 + drift)).max(0.01);
-        let spread = (self.config.base_spread_bps / 10_000.0) * new_mid;
-        let depth = self.config.depth_levels.max(1);
+        let spread = (config.base_spread_bps / 10_000.0) * new_mid;
+        let depth = config.depth_levels.max(1);
 
         let mut bids = Vec::with_capacity(depth);
         let mut asks = Vec::with_capacity(depth);
@@ -241,14 +249,14 @@ impl MockExchangeEngine {
             let step = spread * 0.2;
             let bid_price = new_mid - spread / 2.0 - step * level as f64;
             let ask_price = new_mid + spread / 2.0 + step * level as f64;
-            let mut bid_size = self.config.level_liquidity * (1.0 - 0.05 * level as f64).max(0.2);
-            let mut ask_size = self.config.level_liquidity * (1.0 - 0.05 * level as f64).max(0.2);
+            let mut bid_size = config.level_liquidity * (1.0 - 0.05 * level as f64).max(0.2);
+            let mut ask_size = config.level_liquidity * (1.0 - 0.05 * level as f64).max(0.2);
 
             if state.rng.gen::<f64>() < 0.05 {
-                bid_size *= self.config.large_order_multiplier;
+                bid_size *= config.large_order_multiplier;
             }
             if state.rng.gen::<f64>() < 0.05 {
-                ask_size *= self.config.large_order_multiplier;
+                ask_size *= config.large_order_multiplier;
             }
 
             bids.push(BookLevel {
@@ -268,10 +276,10 @@ impl MockExchangeEngine {
             ts: now,
         };
 
-        let _ = self.market_tx.send(MarketDataEvent::Book(state.book.clone()));
+        let _ = market_tx.send(MarketDataEvent::Book(state.book.clone()));
 
-        let trade_count = (self.config.trade_rate_per_sec
-            * (self.config.tick_interval_ms as f64 / 1000.0))
+        let trade_count = (config.trade_rate_per_sec
+            * (config.tick_interval_ms as f64 / 1000.0))
             .ceil() as usize;
         for _ in 0..trade_count {
             if state.rng.gen::<f64>() < 0.6 {
@@ -285,7 +293,7 @@ impl MockExchangeEngine {
                 } else {
                     state.book.bids.first().map(|lvl| lvl.price).unwrap_or(new_mid)
                 };
-                let qty = (state.rng.gen::<f64>() * 0.8 + 0.2) * self.config.level_liquidity * 0.1;
+                let qty = (state.rng.gen::<f64>() * 0.8 + 0.2) * config.level_liquidity * 0.1;
                 let trade = Trade {
                     instrument: state.book.instrument.clone(),
                     price,
@@ -294,11 +302,11 @@ impl MockExchangeEngine {
                     ts: now,
                 };
                 state.trades.push_back(trade.clone());
-                let _ = self.market_tx.send(MarketDataEvent::Trade(trade));
+                let _ = market_tx.send(MarketDataEvent::Trade(trade));
             }
         }
 
-        if state.rng.gen::<f64>() < self.config.iceberg_probability {
+        if state.rng.gen::<f64>() < config.iceberg_probability {
             let side = if state.rng.gen::<f64>() > 0.5 {
                 Side::Buy
             } else {
@@ -318,14 +326,14 @@ impl MockExchangeEngine {
                     ts: now,
                 };
                 state.trades.push_back(trade.clone());
-                let _ = self.market_tx.send(MarketDataEvent::Trade(trade));
+                let _ = market_tx.send(MarketDataEvent::Trade(trade));
             }
         }
 
-        self.match_orders(state).await;
+        Self::match_orders(state, fill_tx).await;
     }
 
-    async fn match_orders(&mut self, state: &mut SimInstrumentState) {
+    async fn match_orders(state: &mut SimInstrumentState, fill_tx: &mpsc::Sender<Fill>) {
         let now = Utc::now();
         let best_bid = state.book.bids.first().map(|lvl| lvl.price).unwrap_or(0.0);
         let best_ask = state.book.asks.first().map(|lvl| lvl.price).unwrap_or(0.0);
@@ -395,7 +403,7 @@ impl MockExchangeEngine {
                     maker_taker,
                     mid_price: mid,
                 };
-                let _ = self.fill_tx.send(fill).await;
+                let _ = fill_tx.send(fill).await;
             }
         }
 
