@@ -12,7 +12,7 @@ use crate::exchange::{ExchangeHandle, MarketDataEvent};
 use crate::market_data::MarketDataState;
 use crate::performance::PerformanceTracker;
 use crate::signals::Signals;
-use crate::types::{Fill, InstrumentId, Order, OrderStatus, Side};
+use crate::types::{Fill, InstrumentId, Order, OrderStatus};
 
 pub struct ExecutionEngine {
     exchange: ExchangeHandle,

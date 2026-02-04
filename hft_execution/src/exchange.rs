@@ -11,7 +11,7 @@ use crate::config::SimulationConfig;
 use crate::market_data::mid_price;
 use crate::types::{
     BookLevel, BookSnapshot, ExecutionReport, Fill, InstrumentId, MakerTaker, Order, OrderRequest,
-    OrderStatus, OrderType, Side, Trade,
+    OrderStatus, Side, Trade,
 };
 
 #[derive(Debug, Clone)]

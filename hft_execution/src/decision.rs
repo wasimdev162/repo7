@@ -1,6 +1,4 @@
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
-
 use crate::config::ExecutionConfig;
 use crate::market_data::MarketDataState;
 use crate::signals::Signals;
