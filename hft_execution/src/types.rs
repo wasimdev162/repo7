@@ -112,8 +112,3 @@ pub struct OrderAction {
     pub cancel_ids: Vec<Uuid>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ExecutionReport {
-    pub fills: Vec<Fill>,
-    pub cancelled: Vec<Uuid>,
-}

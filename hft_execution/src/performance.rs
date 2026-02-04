@@ -34,7 +34,6 @@ pub struct InstrumentMetrics {
 pub struct PendingAdverse {
     pub ts: DateTime<Utc>,
     pub mid_price: f64,
-    pub side: Side,
     pub horizons: [Duration; 3],
     pub recorded: [bool; 3],
 }
@@ -122,7 +121,6 @@ impl PerformanceTracker {
             metrics.adverse_pending.push(PendingAdverse {
                 ts: fill.ts,
                 mid_price: fill.mid_price,
-                side: fill.side,
                 horizons: [
                     Duration::seconds(1),
                     Duration::seconds(5),

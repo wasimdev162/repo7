@@ -77,14 +77,29 @@ impl DecisionEngine {
         let best_ask = best_ask.unwrap();
         let spread_bps = signals.spread_bps;
 
+        let imbalance_bias = signals.imbalance * side.sign();
+        let flow_bias = signals.trade_flow_imbalance * side.sign();
+        let momentum_bias = signals.momentum * side.sign();
+        let mean_reversion_bias = signals.mean_reversion * side.sign();
+        let directional_bias = imbalance_bias + flow_bias + momentum_bias + mean_reversion_bias;
+
         let momentum_against = match side {
             Side::Buy => signals.momentum > 0.0 && signals.trade_flow_imbalance > 0.0,
             Side::Sell => signals.momentum < 0.0 && signals.trade_flow_imbalance < 0.0,
         };
 
+        let passive_price = match side {
+            Side::Buy => best_bid.price,
+            Side::Sell => best_ask.price,
+        };
+        let queue_ahead = state.estimate_queue_ahead(passive_price, side).unwrap_or(0.0);
+        let queue_too_long = queue_ahead >= (best_bid.size + best_ask.size) * 1.5;
+
         let should_cross = urgency >= self.config.cross_spread_aggression
             || momentum_against
-            || signals.iceberg_detected;
+            || signals.iceberg_detected
+            || directional_bias > 0.15
+            || queue_too_long;
 
         let can_cross = spread_bps <= self.config.max_spread_bps_to_cross;
 
@@ -93,15 +108,12 @@ impl DecisionEngine {
             && !signals.iceberg_detected;
 
         let price = if should_cross && can_cross {
-            match side {
-                Side::Buy => Some(best_ask.price),
-                Side::Sell => Some(best_bid.price),
-            }
+            Some(match side {
+                Side::Buy => best_ask.price,
+                Side::Sell => best_bid.price,
+            })
         } else {
-            match side {
-                Side::Buy => Some(best_bid.price),
-                Side::Sell => Some(best_ask.price),
-            }
+            Some(passive_price)
         };
 
         let order_type = if should_cross && can_cross {
@@ -115,6 +127,9 @@ impl DecisionEngine {
         child_qty = child_qty.max(self.config.min_child_order_qty);
         if top_liquidity > 0.0 {
             child_qty = child_qty.min(top_liquidity * 0.25);
+        }
+        if signals.large_resting_order {
+            child_qty *= 0.7;
         }
 
         let new_order = OrderRequest {

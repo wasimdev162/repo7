@@ -10,8 +10,8 @@ use uuid::Uuid;
 use crate::config::SimulationConfig;
 use crate::market_data::mid_price;
 use crate::types::{
-    BookLevel, BookSnapshot, ExecutionReport, Fill, InstrumentId, MakerTaker, Order, OrderRequest,
-    OrderStatus, Side, Trade,
+    BookLevel, BookSnapshot, Fill, InstrumentId, MakerTaker, Order, OrderRequest, OrderStatus,
+    Side, Trade,
 };
 
 #[derive(Debug, Clone)]
@@ -453,9 +453,3 @@ impl MockExchangeEngine {
     }
 }
 
-pub fn execution_report_from_fills(fills: Vec<Fill>) -> ExecutionReport {
-    ExecutionReport {
-        fills,
-        cancelled: Vec::new(),
-    }
-}

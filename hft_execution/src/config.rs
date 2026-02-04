@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::types::{InstrumentId, InstrumentType, Side};
+use crate::types::{InstrumentId, Side};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -64,8 +64,3 @@ pub struct SimulationConfig {
     pub large_order_multiplier: f64,
 }
 
-impl InstrumentConfig {
-    pub fn instrument_type(&self) -> InstrumentType {
-        self.instrument.instrument_type
-    }
-}

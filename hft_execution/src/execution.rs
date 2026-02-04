@@ -24,7 +24,6 @@ pub struct ExecutionEngine {
 
 struct InstrumentRuntime {
     config: InstrumentConfig,
-    decision_price: f64,
     start_time: DateTime<Utc>,
     remaining_qty: f64,
     open_orders: HashMap<Uuid, Order>,
@@ -82,7 +81,6 @@ impl ExecutionEngine {
                     instrument_cfg.instrument.clone(),
                     InstrumentRuntime {
                         config: instrument_cfg.clone(),
-                        decision_price,
                         start_time,
                         remaining_qty: instrument_cfg.target_qty,
                         open_orders: HashMap::new(),
