@@ -20,9 +20,9 @@ simulation:
   enabled: true
   seed: 42
   tick_interval_ms: 200
-  base_price: 30000.0
-  price_volatility: 0.0004
-  base_spread_bps: 6.0
+  base_price: 1.0
+  price_volatility: 0.00005
+  base_spread_bps: 1.5
   depth_levels: 5
   level_liquidity: 5.0
   trade_rate_per_sec: 4.0
@@ -31,20 +31,20 @@ simulation:
 
 instruments:
   - instrument:
-      symbol: "BTCUSDT"
+      symbol: "USDCUSDT"
       instrument_type: Spot
     side: Buy
-    target_qty: 3.0
+    target_qty: 2500.0
     decision_price_override: null
   - instrument:
-      symbol: "BTCUSDT-PERP"
+      symbol: "USDCUSDT-PERP"
       instrument_type: Perp
     side: Buy
-    target_qty: 2.0
+    target_qty: 2000.0
     decision_price_override: null
   - instrument:
-      symbol: "BTC-30JUN26-50000-C"
+      symbol: "USDC-30JUN26-1.00-C"
       instrument_type: Option
     side: Sell
-    target_qty: 1.5
+    target_qty: 1500.0
     decision_price_override: null
